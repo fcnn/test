@@ -13,37 +13,66 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#include <sys/epoll.h>
+#include <fcntl.h>
 
 #define SERVICE_NAME "5099"
 
 static void
-service_main(int sd, struct sockaddr *sa, int salen)
+service_main(int sd)
 {
 	ssize_t n;
 	ssize_t len;
 	char msg[1024];
 
-	for ( ; ; ) {
-		len = recv(sd, msg, sizeof (msg), 0);
-                if (len == 0) {
-                        printf("connection closed by peer\n");
-                        break;
+	len = recv(sd, msg, sizeof (msg), 0);
+        if (len == 0) {
+               printf("connection closed by peer\n");
+		close(sd);
+               return;
+        }
+        if (len < 0) {
+               if (errno != EINTR) {
+                        perror("recv");
+			return;
                 }
-                if (len < 0) {
-                        if (errno != EINTR) {
-                                perror("recv");
-                                break;
-                        }
-                }
-                else {
-                        len = send(sd, msg, len, 0);
-                }
-	}
-
+        }
+        else {
+                len = send(sd, msg, len, 0);
+        }
 }
 
 static int
-init_server(int argc, char *argv[])
+init_epoll(int sd)
+{
+	int flags = fcntl(sd, F_GETFL, 0);
+	if (fcntl(sd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		perror("fcntl");
+		return -1;
+	}
+	int epollfd = epoll_create1(0);
+	if (epollfd == -1) {
+		perror("epoll_create1");
+		return -1;
+	}
+	struct epoll_event ev;
+	ev.events = EPOLLIN;
+	ev.data.fd = sd;
+	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sd, &ev) == -1) {
+		perror("epoll_ctl");
+		close(epollfd);
+		return -1;
+	}
+	return epollfd;
+}
+ 
+struct __epoll_server {
+	int epollfd;
+	int listen_sd;
+};
+
+static int
+init_server(int argc, char *argv[], struct __epoll_server *epoll_server)
 {
 	int sd;
 	int res;
@@ -52,7 +81,7 @@ init_server(int argc, char *argv[])
 	struct addrinfo *hostaddr = 0;
 
 	char *host = 0;
-	char *service = SERVICE_NAME;
+	const char *service = SERVICE_NAME;
 
 	memset(&hints, 0, sizeof (hints));
 	hints.ai_family = AF_UNSPEC;
@@ -112,7 +141,19 @@ init_server(int argc, char *argv[])
 
 	freeaddrinfo(hostaddr);
 
-	return addr_i == 0 ? -1 : sd; 
+	if (addr_i == 0)
+		return -1;
+
+	int epfd = init_epoll(sd); 
+	if (epfd == -1) {
+		close(sd);
+		return -1;
+	}
+
+	epoll_server->listen_sd = sd;
+	epoll_server->epollfd = epfd;
+
+	return 0;
 }
 
 static void
@@ -141,57 +182,63 @@ init_sig(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-	int sd;
-	int cd;
-	socklen_t slen;
-	struct sockaddr_in6 sa;
-
 	if (init_sig(argc, argv) != 0) {
 		exit(1);
 	}
 
-	sd = init_server(argc, argv);
-	if (sd == -1) {
+	struct __epoll_server epoll_server;
+	if (init_server(argc, argv, &epoll_server) == -1) {
 		exit(1);
 	}
 
+	const int max_events = 10;
+	struct epoll_event events[max_events];
 	for ( ; ; ) {
 		printf("-> ");
 		fflush(stdout);
-		slen = sizeof (sa);
-		cd = accept(sd, (struct sockaddr *)&sa, &slen);
-		if (cd != -1) {
-			char name[128];
-			char serv_name[64];
-			getnameinfo((struct sockaddr *)&sa, slen,
-				name, sizeof(name), serv_name, sizeof(serv_name),
-				NI_NUMERICHOST | NI_NUMERICSERV);
-			printf("accepted %s/%s.\n", name, serv_name);
-		}
-		else {
-			if (errno == EINTR) {
-				continue;
-			}
-			perror("accept");
+		int nfds = epoll_pwait(epoll_server.epollfd, events, max_events, 2000, NULL);
+		if (nfds == -1) {
+			perror("epoll_pwait");
 			break;
 		}
-
-		pid_t pid = fork();
-
-		if (pid != 0) {
-			close(cd);
-		}
-		else {
-			close(sd);
-			service_main(cd, (struct sockaddr*)&sa, slen);
-			close(cd);
-			exit(0);
+		for (int i = 0; i < nfds; ++i) {
+			if (events[i].data.fd == epoll_server.listen_sd) {
+				struct sockaddr_in6 sa;
+				socklen_t slen = sizeof (sa);
+				int cd = accept(epoll_server.listen_sd, (struct sockaddr *)&sa, &slen);
+				if (cd != -1) {
+					char name[128];
+					char serv_name[64];
+					getnameinfo((struct sockaddr *)&sa, slen,
+						name, sizeof(name), serv_name, sizeof(serv_name),
+						0);
+						//NI_NUMERICHOST | NI_NUMERICSERV);
+					printf("accepted %s/%s.\n", name, serv_name);
+					struct epoll_event ev;
+					ev.events = EPOLLIN;
+					ev.data.fd = cd;
+					if (epoll_ctl(epoll_server.epollfd, EPOLL_CTL_ADD, cd, &ev) == -1) {
+						perror("epoll_ctl");
+						close(cd);
+					}
+				}
+				else {
+					if (errno == EINTR) {
+						continue;
+					}
+					perror("accept");
+					break;
+				}
+			}
+			else {
+				service_main(events[i].data.fd);
+			}
 		}
 	}
 
-	close(sd);
+	close(epoll_server.listen_sd);
+	close(epoll_server.epollfd);
 
 	return 0;
 }
-
 
