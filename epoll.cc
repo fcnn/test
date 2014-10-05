@@ -15,6 +15,7 @@
 #include <sys/wait.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
+#include <time.h>
 
 #define SERVICE_NAME "5099"
 
@@ -22,24 +23,37 @@ static void
 service_main(int sd)
 {
 	ssize_t n;
-	ssize_t len;
-	char msg[1024];
+	char msg[16];
+	ssize_t len=1;
 
+	for ( ; len > 0 || ( len < 0 && errno == EAGAIN); ) {
 	len = recv(sd, msg, sizeof (msg), 0);
         if (len == 0) {
-               printf("connection closed by peer\n");
+		printf("connection closed by peer\n");
 		close(sd);
-               return;
+		return;
         }
         if (len < 0) {
                if (errno != EINTR) {
-                        perror("recv");
+			if (errno != EAGAIN) {
+                        	perror("recv");
+				close(sd);
+			}
 			return;
                 }
         }
         else {
-                len = send(sd, msg, len, 0);
+                int sent_len = send(sd, msg, len, 0);
+		if (sent_len == -1) {
+                        perror("send");
+			if (errno == EPIPE || errno == ENOTCONN) {
+				printf("connection closed during send ...\n");
+			}
+			return;
+		}
+		printf("sent %d\n", sent_len);
         }
+	}
 }
 
 static int
@@ -176,7 +190,29 @@ init_sig(int argc, char *argv[])
 	if (sigaction(SIGCHLD, &act, &oact) != 0) {
 		return -1;
 	}
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	act.sa_handler = SIG_IGN;
+	if (sigaction(SIGPIPE, &act, &oact) != 0) {
+		return -1;
+	}
 	return 0;
+}
+
+void peer_info(int cd, struct sockaddr *sa, socklen_t slen)
+{
+	char name[128];
+	char serv_name[64];
+	getnameinfo(sa, slen,
+		name, sizeof(name), serv_name, sizeof(serv_name),
+		0);
+	//NI_NUMERICHOST | NI_NUMERICSERV);
+	int flags = fcntl(cd, F_GETFL, 0);
+	if (fcntl(cd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		perror("fcntl");
+	}
+	flags = fcntl(cd, F_GETFL, 0);
+	printf("accepted %s/%s. noneblock=%d\n", name, serv_name, flags & O_NONBLOCK);
 }
 
 int
@@ -207,15 +243,9 @@ main(int argc, char *argv[])
 				socklen_t slen = sizeof (sa);
 				int cd = accept(epoll_server.listen_sd, (struct sockaddr *)&sa, &slen);
 				if (cd != -1) {
-					char name[128];
-					char serv_name[64];
-					getnameinfo((struct sockaddr *)&sa, slen,
-						name, sizeof(name), serv_name, sizeof(serv_name),
-						0);
-						//NI_NUMERICHOST | NI_NUMERICSERV);
-					printf("accepted %s/%s.\n", name, serv_name);
+					peer_info(cd, (struct sockaddr *)&sa, slen);
 					struct epoll_event ev;
-					ev.events = EPOLLIN;
+					ev.events = EPOLLIN|EPOLLET;
 					ev.data.fd = cd;
 					if (epoll_ctl(epoll_server.epollfd, EPOLL_CTL_ADD, cd, &ev) == -1) {
 						perror("epoll_ctl");
@@ -231,6 +261,10 @@ main(int argc, char *argv[])
 				}
 			}
 			else {
+				//struct timespec req, rem;
+				//req.tv_sec = 2;
+				//req.tv_nsec = 100000000;
+				//nanosleep(&req, &rem);
 				service_main(events[i].data.fd);
 			}
 		}

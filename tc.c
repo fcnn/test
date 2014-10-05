@@ -91,14 +91,14 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	for (i = 0; i < 32; ++i) {
+	for (i = 0; i < 1; ++i) {
 		struct timespec ts[2];
 		clock_gettime(CLOCK_MONOTONIC, &ts[0]);
-		len = send(sd, buf, 256, 0);
-		len = recv(sd, buf, sizeof (buf), 0);
+		len = send(sd, buf, 128, 0);
+		//int recv_len = recv(sd, buf, sizeof (buf), 0);
 		clock_gettime(CLOCK_MONOTONIC, &ts[1]);
 		long nsec = ts[1].tv_nsec - ts[0].tv_nsec;
-		printf("%ld.%03ld\n", nsec / 1000, nsec % 1000);
+		//printf("sent=%d, recv=%d, time=%ld.%03ldus\n", len, recv_len, nsec / 1000, nsec % 1000);
 	}
 
 	close(sd);
