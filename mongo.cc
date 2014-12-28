@@ -8,8 +8,9 @@
 using namespace mongo;
 
 void run() {
-  mongo::DBClientConnection c;
+  mongo::DBClientConnection c(true);
   c.connect("localhost");
+  // c.auth();
 
   bob b;
   bo p = b.genOID().append("name", "Jeo").append("age", 33).obj();
