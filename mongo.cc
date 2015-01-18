@@ -1,5 +1,4 @@
 // g++ mongo.cc -pthread -lmongoclient -lboost_thread -lboost_system -lboost_regex -I $MONGO_DRIVER/include -L $MONGO_DRIVER/lib
-//  https://github.com/mongodb/mongo-cxx-driver.git
 #include <cstdlib>
 #include <iostream>
 #include <boost/shared_ptr.hpp>
