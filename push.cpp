@@ -15,44 +15,35 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/thread.hpp>
 
-enum { max_length = 1024 };
-
-void token2bytes(const char *token, char *bytes) {
-  for (int i = 0; *token && i < 32; ++i) {
-    char val = 0;
-    if (*token >= 'A' && *token <= 'F') {
-      val = (*token - 'A' + 10) << 4;
-    } else if (*token >= 'a' && *token <= 'f') {
-      val = (*token - 'a' + 10) << 4;
-    } else {
-      val = (*token - '0') << 4;
-    }
-    ++token;
-    if (*token >= 'A' && *token <= 'F') {
-      val += *token - 'A' + 10;
-    } else if (*token >= 'a' && *token <= 'f') {
-      val += *token - 'a' + 10;
-    } else {
-      val += *token - '0';
-    }
-    *bytes++ = val;
-    ++token;
-    while (*token == ' ') {
-      ++token;
-    }
-  }
-}
+enum { max_reply_length = 1024 };
 
 class client
 {
 public:
+  int id_;
   int m_num;
-  char message_[1024 * 5];
+  char message_[1024 * 8];
+  int length_;
   bool PushMsg(const std::string& msg, const std::string& token, int32_t max_msg_len) {
-    bool ret = true;
-    char *pointer = message_;
-    *pointer++ = 2;
-    pointer += 4;
+    PackAPNSMsg(msg, token, max_msg_len);
+    PackAPNSMsg(msg + " :)", token, max_msg_len);
+    PackAPNSMsg(msg + " ^_^", token, max_msg_len);
+    PackAPNSMsg(msg + " FYA", token, max_msg_len);
+    std::cout << __FUNCTION__ << ": bytes to send = " << length_ << std::endl;
+    boost::asio::async_write(socket_,
+    boost::asio::buffer(message_, length_),
+    boost::bind(&client::handle_write, this,
+    boost::asio::placeholders::error,
+    boost::asio::placeholders::bytes_transferred));
+    return true;
+  }
+
+  void PackAPNSMsg(const std::string& msg,
+    const std::string& token, uint32_t max_payload) {
+    char *pointer = message_ + length_;
+    char *pack_start = pointer;
+    *pointer = 2;
+    pointer += 5;
     
     *pointer++ = 1;
     uint16_t len = htons(32);
@@ -62,26 +53,20 @@ public:
     pointer += 32;
     
     *pointer++ = 2;
-    size_t msglen = msg.length();
-    if (msglen > max_msg_len - 48) {
-      msglen = max_msg_len - 48;
-    }
+    size_t msglen = EscJsonString(msg.c_str(), pointer + sizeof (len) + 17, max_payload - 48);
     len = htons(msglen + 48);
     memcpy(pointer, &len, sizeof (len));
     pointer += sizeof (len);
     memcpy(pointer, "{\"aps\":{\"alert\":\"", 17);
-    pointer += 17;
-    memcpy(pointer, msg.c_str(), msglen);
-    pointer += msglen;
+    pointer += 17 + msglen;
     memcpy(pointer, "\",\"sound\":\"default\",\"badge\":1}}", 31);
     pointer += 31;
-
+  
     *pointer++ = 3;
     len = htons(4);
     memcpy(pointer, &len, sizeof (len));
     pointer += sizeof (len);
-    static uint32_t _id = 0;
-    uint32_t u32 = htonl(++_id);
+    uint32_t u32 = htonl(++id_);
     memcpy(pointer, &u32, sizeof (u32));
     pointer += sizeof (u32);
     
@@ -98,27 +83,49 @@ public:
     memcpy(pointer, &len, sizeof (len));
     pointer += sizeof (len);
     *pointer++ = 10;
+  
+    msglen = static_cast<int>(pointer - pack_start);
+    u32 = htonl(msglen - 5);
+    memcpy(pack_start + 1, &u32, sizeof (u32));
+  
+    length_ += msglen;
+  }
 
-    int length_ = static_cast<int>(pointer - message_);
+  size_t EscJsonString(const char *msg, char *out, size_t max_length) {
+    unsigned i = 0;
+    unsigned j = 0;
+    for ( ; msg[i] != 0 && j < max_length; ++i) {
+      if (msg[i] == '"' || msg[i] == '\'' || msg[i] == '\\')
+        out[j++] = '\\';
+      out[j++] = msg[i];
+    }
+    return j;
+  }
 
-    u32 = htonl(length_ - 5);
-    memcpy(message_ + 1, &u32, sizeof (u32));
-    
-    memcpy(message_ + length_, message_, length_);
-    message_[length_ + 60] = '^';
-    message_[length_ + 61] = '_';
-    message_[length_ + 62] = '^';
-    length_ *= 2;
-    u32 = htonl(++_id);
-    memcpy(message_ + length_ - 15, &u32, sizeof (u32));
-
-    std::cout << __FUNCTION__ << ": bytes to send = " << length_ << std::endl;
-    boost::asio::async_write(socket_,
-    boost::asio::buffer(message_, length_),
-    boost::bind(&client::handle_write, this,
-    boost::asio::placeholders::error,
-    boost::asio::placeholders::bytes_transferred));
-    std::cout << __FUNCTION__ << ": sent" << std::endl;
+  void token2bytes(const char *token, char *bytes) {
+    for (int i = 0; *token && i < 32; ++i) {
+      char val = 0;
+      if (*token >= 'A' && *token <= 'F') {
+        val = (*token - 'A' + 10) << 4;
+      } else if (*token >= 'a' && *token <= 'f') {
+        val = (*token - 'a' + 10) << 4;
+      } else {
+        val = (*token - '0') << 4;
+      }
+      ++token;
+      if (*token >= 'A' && *token <= 'F') {
+        val += *token - 'A' + 10;
+      } else if (*token >= 'a' && *token <= 'f') {
+        val += *token - 'a' + 10;
+      } else {
+        val += *token - '0';
+      }
+      *bytes++ = val;
+      ++token;
+      while (*token == ' ') {
+        ++token;
+      }
+    }
   }
 
   bool PushMsgOld(const std::string& msg, const std::string& token, int32_t max_msg_len) {
@@ -169,7 +176,9 @@ public:
       boost::asio::ip::tcp::resolver::iterator endpoint_iterator)
     : socket_(io_service, context)
   {
-    m_num = 0;
+    id_ = 0;
+    m_num = 8;
+    length_ = 0;
     socket_.set_verify_mode(boost::asio::ssl::verify_peer);
     socket_.set_verify_callback(
         boost::bind(&client::verify_certificate, this, _1, _2));
@@ -217,15 +226,13 @@ public:
   {
     if (!error)
     {
-      char reply_[256];
       boost::asio::async_read(socket_,
-          boost::asio::buffer(reply_, 256),
+          boost::asio::buffer(reply_, sizeof (reply_)),
           boost::bind(&client::handle_read, this,
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred));
       const char *token = "1427600ea1883f664d2bff04a855273525b7e61090118280e1e36a9fc882de58";
-      const char *msg2 = "hehe1";
-      const char *msg = "hello world! hello'' i...world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello worrld! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello rld! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello rld! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello ld! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! wait ... IOS8 can see this:)";
+      const char *msg = "    msg 1";
       PushMsg_IOS8_Above(msg, token);
       // boost::this_thread::sleep(boost::posix_time::seconds(60 * 10));
     }
@@ -241,13 +248,26 @@ public:
     if (!error)
     {
       std::cout << __FUNCTION__ << " bytes_transferred = " << bytes_transferred << std::endl;
-      if (++m_num >= 5) {
-        return;
+      length_ -= bytes_transferred;
+      if (length_ > 0) {
+        memmove(message_, message_ + bytes_transferred, length_);
+        boost::asio::async_write(socket_,
+          boost::asio::buffer(message_, length_),
+          boost::bind(&client::handle_write, this,
+            boost::asio::placeholders::error,
+            boost::asio::placeholders::bytes_transferred));
+      } else {
+        if (id_ >= m_num) {
+          return;
+        }
       }
       const char *token = "1427600ea1883f664d2bff04a855273525b7e61090118280e1e36a9fc882de58";
-      const char *msg2 = ":) hehe1";
-      const char *msg = ":) hello world! hello'' i...world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello worrld! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello rld! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello rld! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello ld! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello'' i...world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! hello world! wait ... IOS8 can see this:)";
-      PushMsg_IOS8_Above(msg2, token);
+      std::string msg = "    你好世界! ";
+      char buf[2];
+      buf[0] = '0' + m_num + 1;
+      buf[1] = 0;
+      msg.insert(msg.length(), buf);
+      PushMsg_IOS8_Above(msg, token);
       // boost::this_thread::sleep(boost::posix_time::seconds(60 * 10));
 #if 0
       boost::asio::async_read(socket_,
@@ -280,24 +300,12 @@ public:
 
 private:
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket_;
-  char request_[max_length];
-  char reply_[max_length];
+  char reply_[max_reply_length];
 };
 
-int main(int argc, char* argv[])
-{
-  try
-  {
-    if (argc != 3)
-    {
-      std::cerr << "Usage: client <host> <port>\n";
-      return 1;
-    }
-
-    boost::asio::io_service io_service;
-
+client *init_client(const char *host, const char *port, boost::asio::io_service& io_service) {
     boost::asio::ip::tcp::resolver resolver(io_service);
-    boost::asio::ip::tcp::resolver::query query(argv[1], argv[2]);
+    boost::asio::ip::tcp::resolver::query query(host, port);
     boost::asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
 
     boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
@@ -311,10 +319,20 @@ int main(int argc, char* argv[])
     ctx.use_private_key_file("push.pem",boost::asio::ssl::context::pem);
     ctx.use_certificate_file("push.pem",boost::asio::ssl::context::pem);
 
-    client c(io_service, ctx, iterator);
+    return new client(io_service, ctx, iterator);
+}
 
+int main(int argc, char* argv[])
+{
+  try
+  {
+    const char *host = "gateway.push.apple.com";
+    const char *port = "2195";
+    boost::asio::io_service io_service;
+    client *p_client = init_client(host, port, io_service);
     io_service.run();
     std::cout << "exit ..." << std::endl;
+    delete p_client;
   }
   catch (std::exception& e)
   {
