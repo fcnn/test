@@ -25,9 +25,9 @@ public:
   char message_[1<<23];
   int length_;
   bool PushMsg(const std::string& msg, const std::string& token, int32_t max_msg_len) {
-    PackAPNSMsgOld(msg, "token", max_msg_len);
+    PackAPNSMsg(msg, token, max_msg_len);
     PackAPNSMsg(msg + " :)", token, max_msg_len);
-    PackAPNSMsgOld(msg + " ^_^", "afdtoken", max_msg_len);
+    PackAPNSMsg(msg + " ^_^", "afdtoken", max_msg_len);
     PackAPNSMsg(msg + " FYA", token, max_msg_len);
     std::cout << __FUNCTION__ << ": bytes to send = " << length_ << std::endl;
     boost::asio::async_write(socket_,
@@ -276,8 +276,14 @@ public:
       size_t bytes_transferred)
   {
     if (bytes_transferred > 0) {
-      std::cout << "Reply: ";
-      std::cout.write(reply_, bytes_transferred);
+      for (char *p = reply_; p <= reply_ + bytes_transferred - 6; p += 6) {
+        std::cout << "command: " << (int)p[0] << " status: " << (int)p[1];
+        int32_t id;
+        memcpy(&id, p + 2, 4);
+        id = ntohl(id);
+        std::cout << " id: " << id << "   ";
+        std::cout.write(reply_, bytes_transferred);
+      }
       std::cout << "\n";
     }
     if (!error)
