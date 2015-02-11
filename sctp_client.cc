@@ -48,7 +48,7 @@ int main()
       in = sctp_recvmsg( connSock, (void *)buffer, sizeof(buffer),
                         (struct sockaddr *)NULL, 0,
                         &sndrcvinfo, &flags );
-    } while (in == -1 && errno == EAGAIN);
+    } while (in == 0 || in == -1 && errno == EAGAIN);
 
     /* Null terminate the incoming string */
     if (in <= 0)
