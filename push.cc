@@ -17,6 +17,14 @@
 
 enum { max_reply_length = 1024 };
 
+void dump_buf(char *message_, int length_) {
+  std::cout << __FUNCTION__ << ": buffer length = " << length_ << "\n";
+  for (int i = 0; i < length_; ++i) {
+    std::cout << " " << (message_[i]&0x000000ff);
+  }
+  std::cout << "\n";
+}
+
 class client
 {
 public:
@@ -26,9 +34,7 @@ public:
   int length_;
   bool PushMsg(const std::string& msg, const std::string& token, int32_t max_msg_len) {
     PackAPNSMsg(msg, token, max_msg_len);
-    PackAPNSMsg(msg + " :)", token, max_msg_len);
-    PackAPNSMsg(msg + " ^_^", token, max_msg_len);
-    PackAPNSMsg(msg + " FYA", token, max_msg_len);
+    dump_buf(message_,length_);
     std::cout << __FUNCTION__ << ": bytes to send = " << length_ << std::endl;
     boost::asio::async_write(socket_,
     boost::asio::buffer(message_, length_),
@@ -74,7 +80,8 @@ public:
     len = htons(4);
     memcpy(pointer, &len, sizeof (len));
     pointer += sizeof (len);
-    u32 = htonl(time(NULL) + 3600 * 24);
+    // u32 = htonl(time(NULL) + 3600 * 24);
+    u32 = htonl(1);
     memcpy(pointer, &u32, sizeof (u32));
     pointer += sizeof (u32);
     
@@ -177,7 +184,7 @@ public:
     : socket_(io_service, context)
   {
     id_ = 0;
-    m_num = 8;
+    m_num = 1;
     length_ = 0;
     socket_.set_verify_mode(boost::asio::ssl::verify_peer);
     socket_.set_verify_callback(
@@ -232,7 +239,7 @@ public:
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred));
       const char *token = "1427600ea1883f664d2bff04a855273525b7e61090118280e1e36a9fc882de58";
-      const char *msg = "    msg 1";
+      const char *msg = "MSG No. 0";
       PushMsg_IOS8_Above(msg, token);
       // boost::this_thread::sleep(boost::posix_time::seconds(60 * 10));
     }
@@ -245,6 +252,7 @@ public:
   void handle_write(const boost::system::error_code& error,
       size_t bytes_transferred)
   {
+    dump_buf(message_, bytes_transferred);
     if (!error)
     {
       std::cout << __FUNCTION__ << " bytes_transferred = " << bytes_transferred << std::endl;
