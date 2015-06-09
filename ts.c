@@ -138,6 +138,18 @@ init_sig(int argc, char *argv[])
 	return 0;
 }
 
+void on_new_connection(int cd)
+{
+	int buflen;
+	socklen_t optlen = sizeof buflen;
+	int ret = getsockopt(cd,SOL_SOCKET,SO_RCVBUF,&buflen,&optlen);
+	printf("rcv buff = %d\n", buflen);
+	buflen = 32;
+	ret = setsockopt(cd,SOL_SOCKET,SO_RCVBUF,&buflen,sizeof buflen);
+	ret = getsockopt(cd,SOL_SOCKET,SO_RCVBUF,&buflen,&optlen);
+	printf("rcv buff = %d\n", buflen);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -183,6 +195,7 @@ main(int argc, char *argv[])
 		}
 		else {
 			close(sd);
+			on_new_connection(cd);
 			service_main(cd, (struct sockaddr*)&sa, slen);
 			close(cd);
 			exit(0);
