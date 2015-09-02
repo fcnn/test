@@ -1,8 +1,8 @@
 # flags  
 CC = g++  
 CFS = -Wall -msse4.2 -mavx2
-CFS = -Wall -mavx2
-  
+CFS = -Wall -mavx2 -g
+ 
 # args  
 RELEASE =0  
 BITS =  

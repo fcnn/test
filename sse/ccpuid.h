@@ -692,7 +692,7 @@ static int simd_try_sigill(int (*pfunc)(void*), void* puserdata)
 }
 
 // 验证mmx指令是否能运行_实际指令测试.
-static int	simd_try_mmx_pfunc(void* puserdata)
+static int simd_try_mmx_pfunc(void* puserdata)
 {
 	#if defined(_M_X64) && defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 		// VC编译器不支持64位下的MMX.
@@ -704,7 +704,7 @@ static int	simd_try_mmx_pfunc(void* puserdata)
 }
 
 // 验证mmx指令是否能运行.
-static int	simd_try_mmx()
+static int simd_try_mmx()
 {
 	int rt = 0;
 	#if defined(_M_X64) && defined(_MSC_VER) && !defined(__INTEL_COMPILER)
@@ -717,7 +717,7 @@ static int	simd_try_mmx()
 
 
 // 验证sse指令是否能运行_实际指令测试.
-static int	simd_try_sse_pfunc(void* puserdata)
+static int simd_try_sse_pfunc(void* puserdata)
 {
 	int rt = 0;
 	volatile __m128 xmm1 = _mm_setzero_ps();	// SSE instruction: xorps
@@ -727,7 +727,7 @@ static int	simd_try_sse_pfunc(void* puserdata)
 }
 
 // 验证sse指令是否能运行.
-static int	simd_try_sse()
+static inline int simd_try_sse()
 {
 	int rt = simd_try_sigill(simd_try_sse_pfunc, 0);
 	return rt;
@@ -738,9 +738,9 @@ static int	simd_try_sse()
 //
 // result: 返回当前运行环境是否支持MMX指令集. 非0表示支持, 0表示不支持.
 // phwmmx: 返回硬件是否支持MMX指令集. 非0表示支持, 0表示不支持.
-INLINE int	simd_mmx(int* phwmmx)
+INLINE int simd_mmx(int* phwmmx)
 {
-	int	rt = 0;	// result
+	int rt = 0;	// result
 	#ifdef CCPUID_X86
 		const uint32_t	BIT_D_MMX = 0x00800000;	// bit 23
 		uint32_t dwBuf[4];
