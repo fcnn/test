@@ -7,7 +7,7 @@ libdsl.so: dsl.o
 	g++ -shared -Wl,-soname,libdsl.so -o $@ $^
 
 dsltest: dsltest.o
-	gcc -g -o $@ $^ -ldl -lrt -ldsl -L.
+	gcc -g -o $@ $^ -ldl -lrt
 
 .PHONY: clean
 
