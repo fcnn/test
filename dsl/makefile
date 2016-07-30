@@ -12,6 +12,6 @@ dsltest: dsltest.o
 .PHONY: clean
 
 clean:
-	rm -rf lib* *.o dsltest
+	rm -rf lib* *.o _* dsltest
 
 
