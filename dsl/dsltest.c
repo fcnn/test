@@ -12,8 +12,7 @@
 
 #define FILE_NAME "_dsltmp.c"
 #define OBJ_NAME "_dsltmp.o"
-#define SO_NAME "libdsltest.so.1"
-#define OUT_NAME "libdsltest.so.1.0.1"
+#define SO_NAME "libdsltest.so"
 
 void create_file()
 {
@@ -49,7 +48,7 @@ void compile()
 		}
 	} else {
 		const char *soname = "-Wl,-soname," SO_NAME;
-		execlp("gcc", "gcc", "-shared", soname, "-o", OUT_NAME, OBJ_NAME, NULL);
+		execlp("gcc", "gcc", "-shared", soname, "-o", SO_NAME, OBJ_NAME, NULL);
 	}
 }
 
@@ -59,7 +58,7 @@ double (*funcp)(double) = NULL;
 
 void load()
 {
-	handle = dlopen(OUT_NAME, RTLD_LAZY);
+	handle = dlopen(SO_NAME, RTLD_LAZY);
 	if (handle == NULL) {
 		printf("dlopen error\n");
 		return;

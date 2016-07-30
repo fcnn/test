@@ -1,10 +1,10 @@
 
-all: libdsl.so.1.0.1 dsltest
+all: libdsl.so dsltest
 
 CXXFLAGS=-fPIC
 
-libdsl.so.1.0.1: dsl.o
-	g++ -shared -Wl,-soname,libdsl.so.1 -o $@ $^
+libdsl.so: dsl.o
+	g++ -shared -Wl,-soname,libdsl.so -o $@ $^
 
 dsltest: dsltest.o
 	gcc -g -o $@ $^ -ldl -lrt -ldsl -L.
