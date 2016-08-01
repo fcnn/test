@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
 
 #define FILE_NAME "_dsltmp.c"
 #define OBJ_NAME "_dsltmp.o"
@@ -17,6 +18,23 @@
 void create_file()
 {
 	const char *src = "//extern \"C\" {\n"
+			  "     #include <stdio.h>\n"
+			  "	void _init()\n"
+			  "	{\n"
+			  "		printf(\"%s\\n\", __func__);\n"
+			  "	}\n"
+			  "	void _fini()\n"
+			  "	{\n"
+			  "		printf(\"%s\\n\", __func__);\n"
+			  "	}\n"
+			  "     __attribute__((constructor)) void constructor()\n"
+			  "     {\n"
+			  "		printf(\"%s\\n\", __func__);\n"
+			  "     }\n"
+			  "     __attribute__((destructor)) void destructor()\n"
+			  "     {\n"
+			  "		printf(\"%s\\n\", __func__);\n"
+			  "     }\n"
 			  "	double myfunc(double d)\n"
 			  "	{\n"
 			  "		return d + (long)d;\n"
@@ -48,7 +66,7 @@ void compile()
 		}
 	} else {
 		const char *soname = "-Wl,-soname," SO_NAME;
-		execlp("gcc", "gcc", "-shared", soname, "-o", SO_NAME, OBJ_NAME, NULL);
+		execlp("gcc", "gcc", "-shared", "-nostartfiles", soname, "-o", SO_NAME, OBJ_NAME, NULL);
 	}
 }
 
@@ -61,7 +79,7 @@ void load()
 	handle = dlopen(SO_NAME, RTLD_LAZY);
 	if (handle == NULL) {
 		printf("dlopen error\n");
-		return;
+		exit(1);
 	}
 	dlerror();
 	funcp = (double (*)(double))dlsym(handle, "myfunc");
