@@ -74,11 +74,27 @@ void *handle = NULL;
 double myfunc(double);
 double (*funcp)(double) = NULL;
 
+void set_ld_path()
+{
+	char ld_path[1024];
+	const char *name = "LD_LIBRARY_PATH";
+	char *oldpath = getenv(name);
+	if (oldpath == NULL) {
+		getcwd(ld_path, sizeof ld_path);
+	} else {
+		int len = sprintf(ld_path, "%s:", oldpath);
+		getcwd(ld_path + len, sizeof (ld_path) - len);
+	}
+	printf("setting %s to %s ...\n", name, ld_path);
+	setenv(name, ld_path, 1);
+	if (fork() != 0) exit(0);
+}
 void load()
 {
+	//set_ld_path();
 	handle = dlopen(SO_NAME, RTLD_LAZY);
 	if (handle == NULL) {
-		printf("dlopen error\n");
+		printf("dlopen error: %s\n", dlerror());
 		exit(1);
 	}
 	dlerror();
