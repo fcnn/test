@@ -18,7 +18,7 @@
 void create_file()
 {
 	const char *src = "//extern \"C\" {\n"
-			  "     #include <stdio.h>\n"
+			  "	#include <stdio.h>\n"
 			  "	void _init()\n"
 			  "	{\n"
 			  "		printf(\"%s\\n\", __func__);\n"
@@ -27,14 +27,14 @@ void create_file()
 			  "	{\n"
 			  "		printf(\"%s\\n\", __func__);\n"
 			  "	}\n"
-			  "     __attribute__((constructor)) void constructor()\n"
-			  "     {\n"
+			  "	__attribute__((constructor)) void constructor()\n"
+			  "	{\n"
 			  "		printf(\"%s\\n\", __func__);\n"
-			  "     }\n"
-			  "     __attribute__((destructor)) void destructor()\n"
-			  "     {\n"
+			  "	}\n"
+			  "	__attribute__((destructor)) void destructor()\n"
+			  "	{\n"
 			  "		printf(\"%s\\n\", __func__);\n"
-			  "     }\n"
+			  "	}\n"
 			  "	double myfunc(double d)\n"
 			  "	{\n"
 			  "		return d + (long)d;\n"
@@ -85,13 +85,12 @@ void set_ld_path()
 		int len = sprintf(ld_path, "%s:", oldpath);
 		getcwd(ld_path + len, sizeof (ld_path) - len);
 	}
-	printf("setting %s to %s ...\n", name, ld_path);
 	setenv(name, ld_path, 1);
-	if (fork() != 0) exit(0);
+	printf("setting %s to %s ...\n", name, getenv(name));
 }
 void load()
 {
-	//set_ld_path();
+	set_ld_path();
 	handle = dlopen(SO_NAME, RTLD_LAZY);
 	if (handle == NULL) {
 		printf("dlopen error: %s\n", dlerror());
