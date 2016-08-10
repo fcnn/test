@@ -70,9 +70,8 @@ void compile()
 	}
 }
 
-void *handle = NULL;
-double myfunc(double);
-double (*funcp)(double) = NULL;
+void *g_handle = NULL;
+double (*g_funcp)(double) = NULL;
 
 void set_ld_path()
 {
@@ -88,17 +87,18 @@ void set_ld_path()
 	setenv(name, ld_path, 1);
 	printf("setting %s to %s ...\n", name, getenv(name));
 }
+
 void load()
 {
 	set_ld_path();
-	handle = dlopen(SO_NAME, RTLD_LAZY);
-	if (handle == NULL) {
+	g_handle = dlopen(SO_NAME, RTLD_LAZY);
+	if (g_handle == NULL) {
 		printf("dlopen error: %s\n", dlerror());
 		exit(1);
 	}
 	dlerror();
-	funcp = (double (*)(double))dlsym(handle, "myfunc");
-	if (funcp == NULL) {
+	g_funcp = (double (*)(double))dlsym(g_handle, "myfunc");
+	if (g_funcp == NULL) {
 		printf("dlsym error: %s\n", dlerror());
 	}
 }
@@ -123,10 +123,10 @@ int main(int argc, char *argv[])
 		ts1.tv_nsec += 1000000000;
 	}
 
-	printf("timecost: %ld.%03ld, funcp=%p\n", (long)ts1.tv_sec, (long)ts1.tv_nsec/1000000, funcp);
+	printf("timecost: %ld.%03ld, g_funcp=%p\n", (long)ts1.tv_sec, (long)ts1.tv_nsec/1000000, g_funcp);
 
 	double d = 1.18;
-	printf("    %lf -> %lf\n", d, funcp(d)); 
+	printf("    %lf -> %lf\n", d, g_funcp(d)); 
 
-	dlclose(handle);
+	dlclose(g_handle);
 }
