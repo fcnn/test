@@ -1,15 +1,8 @@
 
+// testcase:  https://tools.ietf.org/html/rfc2202
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
-#include <string.h>
-
 #include <openssl/engine.h>
-#include <openssl/hmac.h>
-#include <openssl/evp.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 
 #define HEX_DIGITS "0123456789ABCDEF"
 
