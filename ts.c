@@ -53,6 +53,9 @@ init_server(int argc, char *argv[])
 
 	char *host = 0;
 	char *service = SERVICE_NAME;
+	if (argc > 1) {
+		service = argv[1];
+	}
 
 	memset(&hints, 0, sizeof (hints));
 	hints.ai_family = AF_UNSPEC;
@@ -91,7 +94,7 @@ init_server(int argc, char *argv[])
 			NI_NUMERICHOST | NI_NUMERICSERV);
 		printf("binding %s/%s ... ", name, serv_name);
 		if ((sd = socket(addr_i->ai_family, addr_i->ai_socktype, 0)) == -1) {
-			perror("");
+			perror("bind");
 			continue;
 		}
 
@@ -206,5 +209,3 @@ main(int argc, char *argv[])
 
 	return 0;
 }
-
-

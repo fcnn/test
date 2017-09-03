@@ -12,7 +12,7 @@
 #include <netinet/sctp.h>
 
 #define MAX_BUFFER 1024
-#define MY_PORT_NUM 10000
+#define MY_PORT_NUM 70
 #define LOCALTIME_STREAM 0
 #define GMT_STREAM 1
 
