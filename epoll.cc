@@ -19,8 +19,7 @@
 
 #define SERVICE_NAME "5099"
 
-static void
-service_main(int sd)
+static void service_main(int sd)
 {
 	ssize_t n;
 	char msg[16];
@@ -62,8 +61,7 @@ struct __epoll_server {
 	int sd_count;
 };
 
-static int
-set_epoll(struct __epoll_server *server)
+static int set_epoll(struct __epoll_server *server)
 {
 	int epollfd = epoll_create1(0);
 	if (epollfd == -1) {
@@ -90,9 +88,7 @@ set_epoll(struct __epoll_server *server)
 	return epollfd;
 }
  
-static int
-init_server(int argc, char *argv[], struct __epoll_server *epoll_server)
-{
+static int init_server(int argc, char *argv[], struct __epoll_server *epoll_server) {
 	int sd;
 	int res;
 	struct addrinfo hints;
@@ -182,18 +178,14 @@ init_server(int argc, char *argv[], struct __epoll_server *epoll_server)
 	return 0;
 }
 
-static void
-sig_child(int signo, siginfo_t *siginfo, void *foo)
-{
+static void sig_child(int signo, siginfo_t *siginfo, void *foo) {
 	int status;
 	struct rusage rusage;
 	for ( ; wait4(-1, &status, WNOHANG, &rusage) > 0; ) {
 	}
 }
 
-static int
-init_sig(int argc, char *argv[])
-{
+static int init_sig(int argc, char *argv[]) {
 	struct sigaction act, oact;
 
 	sigemptyset(&act.sa_mask);
@@ -211,8 +203,7 @@ init_sig(int argc, char *argv[])
 	return 0;
 }
 
-void peer_info(int cd, struct sockaddr *sa, socklen_t slen)
-{
+void peer_info(int cd, struct sockaddr *sa, socklen_t slen) {
 	char name[128];
 	char serv_name[64];
 	getnameinfo(sa, slen,
@@ -227,17 +218,17 @@ void peer_info(int cd, struct sockaddr *sa, socklen_t slen)
 	printf("accepted %s/%s. noneblock=%d\n", name, serv_name, flags & O_NONBLOCK);
 }
 
-int
-main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	if (init_sig(argc, argv) != 0) {
 		exit(1);
 	}
 
+	seteuid(geteuid());
 	struct __epoll_server epoll_server;
 	if (init_server(argc, argv, &epoll_server) == -1) {
 		exit(1);
 	}
+	seteuid(getuid());
 
 	const int max_events = 10;
 	struct epoll_event events[max_events];
