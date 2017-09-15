@@ -12,7 +12,7 @@
 #include <netinet/in.h>
 
 #define IP_ADDR INADDR_ANY
-#define PORT 800
+#define PORT 1001
 
 int password_cb(char *buf, int size, int rwflag, void *password);
 
@@ -41,10 +41,10 @@ int ssl_run(int cfd) {
   BIO *bio = BIO_pop(accept_bio);
 
   clock_gettime(CLOCK_REALTIME, &tp[1]);
-  char buf[8192 + 1024];
+  char buf[8192];
   while (1) {
     // first read data
-    int r = SSL_read(ssl, buf, 8192); 
+    int r = SSL_read(ssl, buf, sizeof buf); 
     switch (SSL_get_error(ssl, r)) { 
       case SSL_ERROR_NONE: 
         break;
@@ -55,11 +55,17 @@ int ssl_run(int cfd) {
         goto end;
     }
 
-    int len = r;
+      
     clock_gettime(CLOCK_REALTIME, &tp[2]);
     long sh_time = (tp[1].tv_sec - tp[0].tv_sec) * 1000 + (tp[1].tv_nsec - tp[0].tv_nsec) / 1000000;
     long serv_time = (tp[2].tv_sec - tp[1].tv_sec) * 1000000 + (tp[2].tv_nsec - tp[1].tv_nsec) / 1000;
-    len += snprintf(buf + len, sizeof (buf) - len, "ssl hank shake: %ldms, service: %ldus\r\n", sh_time, serv_time);
+    char content[200];
+    int cnt_len = snprintf(content, sizeof (content), "ssl hank shake: %ldms, service: %ldus\r\n", sh_time, serv_time);
+    int len = snprintf(buf, sizeof buf,
+                                    "HTTP/1.1 200 OK\r\n"
+                                    "Content-Type: text/plain\r\n"
+                                    "Content-Length: %d\r\n"
+                                    "Access-Control-Allow-Origin: *\r\n\r\n%s", cnt_len, content);
 
     // now keep writing until we've written everything
     int offset = 0;
@@ -84,42 +90,50 @@ end:
   BIO_free_all(accept_bio);
 }
 
+int create_server() {
+  int fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (fd < 0) {
+    printf("opening socket\n");
+    return -4;
+  }
+
+  struct sockaddr_in s_addr;
+  bzero((char *)&s_addr, sizeof(s_addr));
+  s_addr.sin_family = AF_INET;
+  s_addr.sin_addr.s_addr = IP_ADDR;
+  s_addr.sin_port = htons(PORT);
+
+  if (bind(fd, (struct sockaddr*)&s_addr, sizeof(s_addr)) < 0) {
+    perror("binding\n");
+    return -5;
+  }
+
+  SSL_load_error_strings();
+  ERR_load_crypto_strings();
+  OpenSSL_add_all_algorithms();
+  SSL_library_init();
+
+  listen(fd, 2);
+  return fd;
+}
+
 /**
  * Example SSL server that accepts a client and echos back anything it receives.
  * Test using `curl -I https://127.0.0.1:8081 --insecure`
  */
 int main(int arc, char **argv) {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) {
-        printf("opening socket\n");
-        return -4;
-    }
-    
-    struct sockaddr_in s_addr;
-    bzero((char *)&s_addr, sizeof(s_addr));
-    s_addr.sin_family = AF_INET;
-    s_addr.sin_addr.s_addr = IP_ADDR;
-    s_addr.sin_port = htons(PORT);
-    
-    if (bind(fd, (struct sockaddr*)&s_addr, sizeof(s_addr)) < 0) {
-        printf("binding\n");
-        return -5;
-    }
+  int fd = create_server(); 
+  if (fd < 0) {
+    exit(1);
+  }
 
-    SSL_load_error_strings();
-    ERR_load_crypto_strings();
-    OpenSSL_add_all_algorithms();
-    SSL_library_init();
+  int cfd;
+  while ((cfd = accept(fd, 0, 0)) != -1) {
+    ssl_run(cfd);
+    close(cfd);
+  }
 
-    listen(fd, 2);
-    
-    int cfd;    
-    while ((cfd = accept(fd, 0, 0)) != -1) {
-      ssl_run(cfd);
-      close(cfd);
-    }
-    
-    return 0;
+  return 0;
 }
 
 int password_cb(char *buf, int size, int rwflag, void *password) {
