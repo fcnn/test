@@ -1,22 +1,21 @@
 // gcc ssl.c -lssl  -lcrypto
 
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-
 #include <string.h>
-
 #include <unistd.h>
 #include <time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+#include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
 
 #define IP_ADDR INADDR_ANY
 #define PORT 1001
 
 int password_cb(char *buf, int size, int rwflag, void *password);
 
-int ssl_run(int cfd) {
+int ssl_run(int sd) {
   SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
   if (ctx == NULL) {
     printf("errored; unable to load context.\n");
@@ -33,7 +32,7 @@ int ssl_run(int cfd) {
 
   SSL *ssl = SSL_new(ctx);
 
-  BIO *accept_bio = BIO_new_socket(cfd, BIO_CLOSE);
+  BIO *accept_bio = BIO_new_socket(sd, BIO_CLOSE);
   SSL_set_bio(ssl, accept_bio, accept_bio);
 
   SSL_accept(ssl);
@@ -127,10 +126,10 @@ int main(int arc, char **argv) {
     exit(1);
   }
 
-  int cfd;
-  while ((cfd = accept(fd, 0, 0)) != -1) {
-    ssl_run(cfd);
-    close(cfd);
+  int cd;
+  while ((cd = accept(fd, 0, 0)) != -1) {
+    ssl_run(cd);
+    close(cd);
   }
 
   return 0;
