@@ -5,7 +5,7 @@
 #include <errno.h>
 #include "jsmn.h"
 
-// 见配置文件适配成json格式，
+// 将配置文件适配成json格式，
 //   1。将"="号转成":", 
 //   2. 在行末加上","
 //   3. 将整篇用{}括起来
@@ -133,7 +133,6 @@ int main() {
 		return 3;
 	}
 
-		/* Read another chunk */
 	jslen = readall(js, (1<<13)-3);
 	if (jslen < 0) {
 		fprintf(stderr, "fread(): %d, errno=%d\n", jslen, errno);
