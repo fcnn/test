@@ -11,23 +11,25 @@
 #include <openssl/err.h>
 
 #define IP_ADDR INADDR_ANY
-#define PORT 1001
+#define PORT 443
 
 int password_cb(char *buf, int size, int rwflag, void *password);
 
 int ssl_run(int sd) {
-  SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
-  if (ctx == NULL) {
-    printf("errored; unable to load context.\n");
-    ERR_print_errors_fp(stderr);
-    return -3;
-  }
+  SSL_CTX *ctx = SSL_CTX_new(TLS_method());
+
+  int ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
+                            SSL_OP_SINGLE_ECDH_USE |
+                            SSL_OP_CIPHER_SERVER_PREFERENCE;
+
+  SSL_CTX_set_options(ctx, ssl_opts);
+
 
   struct timespec tp[3];
   clock_gettime(CLOCK_REALTIME, &tp[0]);
-  SSL_CTX_use_certificate_file(ctx, "gw.pem", SSL_FILETYPE_PEM);
+  SSL_CTX_use_certificate_file(ctx, "gw.cert.pem", SSL_FILETYPE_PEM);
   SSL_CTX_set_default_passwd_cb(ctx, password_cb);
-  SSL_CTX_use_PrivateKey_file(ctx, "gw.key", SSL_FILETYPE_PEM);
+  SSL_CTX_use_PrivateKey_file(ctx, "gw.key.pem", SSL_FILETYPE_PEM);
   SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, 0);
 
   SSL *ssl = SSL_new(ctx);

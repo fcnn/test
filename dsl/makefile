@@ -1,17 +1,19 @@
 
-all: libdsl.so dsltest
+#all: libdsl.so dsltest
+all: dsl so
 
 CXXFLAGS=-fPIC
 
-libdsl.so: dsl.o
-	g++ -shared -Wl,-soname,libdsl.so -o $@ $^
+#libdsl.so: dsl.o
+#	$(CXX) -shared -Wl,-soname,libdsl.so -o $@ $^
 
-dsltest: dsltest.o
-	gcc -g -o $@ $^ -ldl -lrt
+dsl: main.o
+	$(CC) -g -o $@ $^ -ldl -lrt
 
+so:
+	mkdir so
 .PHONY: clean
 
 clean:
-	rm -rf lib* *.o _* dsltest
-
+	rm -rf lib* *.o _* dsl so
 

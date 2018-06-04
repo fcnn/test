@@ -1,4 +1,3 @@
-//#include <iostream>
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -13,30 +12,24 @@
 
 #define FILE_NAME "_dsltmp.c"
 #define OBJ_NAME "_dsltmp.o"
-#define SO_NAME "libdsltest.so"
+#define SO_NAME "libdsl.so"
 
-void create_file()
-{
+void create_file() {
 	const char *src = "//extern \"C\" {\n"
 			  "	#include <stdio.h>\n"
-			  "	void _init()\n"
-			  "	{\n"
+			  "	void _init() {\n"
 			  "		printf(\"%s\\n\", __func__);\n"
 			  "	}\n"
-			  "	void _fini()\n"
-			  "	{\n"
+			  "	void _fini() {\n"
 			  "		printf(\"%s\\n\", __func__);\n"
 			  "	}\n"
-			  "	__attribute__((constructor)) void constructor()\n"
-			  "	{\n"
+			  "	__attribute__((constructor)) void constructor() {\n"
 			  "		printf(\"%s\\n\", __func__);\n"
 			  "	}\n"
-			  "	__attribute__((destructor)) void destructor()\n"
-			  "	{\n"
+			  "	__attribute__((destructor)) void destructor() {\n"
 			  "		printf(\"%s\\n\", __func__);\n"
 			  "	}\n"
-			  "	double myfunc(double d)\n"
-			  "	{\n"
+			  "	double dsl_run(double d) {\n"
 			  "		return d + (long)d;\n"
 			  "	}\n"
 			  "//}\n";
@@ -45,8 +38,7 @@ void create_file()
 	close(fd);
 }
 
-void compile()
-{
+void compile() {
 	pid_t pid = fork();
 	if (pid != 0) {
 		int status = 0;
@@ -66,46 +58,27 @@ void compile()
 		}
 	} else {
 		const char *soname = "-Wl,-soname," SO_NAME;
-		execlp("gcc", "gcc", "-shared", "-nostartfiles", soname, "-o", SO_NAME, OBJ_NAME, NULL);
+		execlp("gcc", "gcc", "-shared", "-nostartfiles", soname, "-o", "so/" SO_NAME, OBJ_NAME, NULL);
 	}
 }
 
 void *g_handle = NULL;
-double (*g_funcp)(double) = NULL;
+double (*g_dsl_fun)(double) = NULL;
 
-void set_ld_path()
-{
-	char ld_path[1024];
-	const char *name = "LD_LIBRARY_PATH";
-	char *oldpath = getenv(name);
-	if (oldpath == NULL) {
-		getcwd(ld_path, sizeof ld_path);
-	} else {
-		int len = sprintf(ld_path, "%s:", oldpath);
-		getcwd(ld_path + len, sizeof (ld_path) - len);
-	}
-	setenv(name, ld_path, 1);
-	printf("setting %s to %s ...\n", name, getenv(name));
-}
-
-void load()
-{
-	set_ld_path();
-	g_handle = dlopen(SO_NAME, RTLD_LAZY);
+void load() {
+	g_handle = dlopen("so/" SO_NAME, RTLD_LAZY);
 	if (g_handle == NULL) {
 		printf("dlopen error: %s\n", dlerror());
 		exit(1);
 	}
 	dlerror();
-	g_funcp = (double (*)(double))dlsym(g_handle, "myfunc");
-	if (g_funcp == NULL) {
+	g_dsl_fun = (double (*)(double))dlsym(g_handle, "dsl_run");
+	if (g_dsl_fun == NULL) {
 		printf("dlsym error: %s\n", dlerror());
 	}
 }
 
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	struct timespec ts0;
 	clock_gettime(CLOCK_REALTIME, &ts0);
 
@@ -123,10 +96,10 @@ int main(int argc, char *argv[])
 		ts1.tv_nsec += 1000000000;
 	}
 
-	printf("timecost: %ld.%03ld, g_funcp=%p\n", (long)ts1.tv_sec, (long)ts1.tv_nsec/1000000, g_funcp);
+	printf("timecost: %ld.%03ld, g_dsl_fun=%p\n", (long)ts1.tv_sec, (long)ts1.tv_nsec/1000000, g_dsl_fun);
 
 	double d = 1.18;
-	printf("    %lf -> %lf\n", d, g_funcp(d)); 
+	printf("    %lf -> %lf\n", d, g_dsl_fun(d)); 
 
 	dlclose(g_handle);
 }
