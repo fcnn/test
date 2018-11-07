@@ -85,16 +85,18 @@ int main(int argc, char *argv[])
 {
 	int i;
 	int len;
-	char buf[1024];
 	int sd = connect_server(argc, argv);
 	if (sd == -1) {
 		exit(1);
 	}
 
-	for (i = 0; i < 2; ++i) {
+	for (i = 0; i < 8; ++i) {
+		//char buf[1<<11];
+		char buf[1024];
 		struct timespec ts[2];
 		clock_gettime(CLOCK_MONOTONIC, &ts[0]);
-		len = send(sd, buf, 256, 0);
+		sprintf(buf, "packet %d ...", i);
+		len = send(sd, buf, sizeof buf, 0);
 		if (len == -1) {
 			perror("send");
 			break;
@@ -105,8 +107,8 @@ int main(int argc, char *argv[])
 			break;
 		}
 		clock_gettime(CLOCK_MONOTONIC, &ts[1]);
-		long nsec = ts[1].tv_nsec - ts[0].tv_nsec;
-		printf("time = %ld.%03ld, bytes recved = %ld\n", nsec / 1000, nsec % 1000, (long)len);
+		long nsec = (ts[1].tv_sec - ts[0].tv_sec)*1000000000 + ts[1].tv_nsec - ts[0].tv_nsec;
+		printf("time = %ld.%06ld, bytes recved = %ld\n", nsec / 1000000, nsec % 1000000, (long)len);
 	}
 
 	close(sd);

@@ -23,23 +23,25 @@
 "<body>" \
 "		<p id=\"body_title\"></p>" \
 "		<div id=\"msg\"></div>" \
+"       <textarea id=\"rsp\" style=\"width: 100%; height: 50px\" readonly=\"readonly\"></textarea><br />" \
 "<script>" \
 "var msg = document.getElementById(\"msg\");" \
+"var rsp = document.getElementById(\"rsp\");" \
 "var startTime;" \
-"function getCode() {" \
-"    startTime = new Date().getTime();" \
-"    fetch(\"/ping\", {" \
+"function getCode(url, id) {" \
+"    fetch(url + \"ping\", {" \
 "        method: \"POST\"," \
 "        headers: {" \
-"            \"Content-Type\": \"application/x-www-form-urlencoded\"," \
+"            \"Content-Type\": \"text/plain\"," \
 "        }," \
-"        body: \"region=\" + \"1\" + \"&phone=\" + \"5804005678\" + \"&mod=code&act=getCode\\r\\n\\r\\n\"," \
+"        body: id + \"\\r\\n\\r\\n\"" \
 "    })" \
 "    .then(res => res.json())" \
 "    .then(data => {" \
 "		setTimeIndicator(startTime);" \
+"       rsp.value = rsp.value + ' ' + id + \"=>\" + JSON.stringify(data);" \
 "    }).catch(function(error) {" \
-"	    msg.innerHTML = 'error: ' + error.message;" \
+"	    rsp.value = rsp.value + ' ' + id + '=>error: ' + error.message;" \
 "    });" \
 "}" \
 "function setTimeIndicator(start) {" \
@@ -47,7 +49,10 @@
 "	document.getElementById('body_title').innerHTML = now.toString() + '！';" \
 "	msg.innerHTML = 'round trip time: ' + (now.getTime() - start).toString() + 'ms';" \
 "}" \
-"getCode();" \
+"rsp.value = '';" \
+"startTime = new Date().getTime();" \
+"getCode(\"http://h2.yeejay.cc:800/\", \"h2\");" \
+"getCode(\"http://f1.yeejay.cc:800/\", \"f1\");" \
 "</script> </body> </html>"
 
 
@@ -103,6 +108,7 @@ static void http_run(int sd) {
     char *body;
     int cnt_len;
     char data[2048];
+    const char *content_type = "text/html";
     if (request == 0) {
       body = HTML;
       cnt_len = strlen(body);
@@ -111,14 +117,14 @@ static void http_run(int sd) {
       clock_gettime(CLOCK_REALTIME, &tp[1]);
       double serv_time = (double)((tp[1].tv_sec - tp[0].tv_sec) * 1000000000 + (tp[1].tv_nsec - tp[0].tv_nsec)) / 1000000;
       cnt_len = snprintf(data, sizeof (data), "{\"elapsed\": %.3f}", serv_time);
+      content_type = "application/json";
     }
 
     int len = snprintf(buf, sizeof buf,
 			"HTTP/1.1 200 OK\r\n"
-			"Content-Type: text/html\r\n"
+			"Content-Type: %s\r\n"
 			"Content-Length: %d\r\n"
-			"Access-Control-Allow-Origin: *\r\n\r\n%s\r\n", cnt_len, body);
-    fprintf(stderr, "<- %s\n", buf);
+			"Access-Control-Allow-Origin: *\r\n\r\n%s\r\n", content_type, cnt_len, body);
 
     // now keep writing until we've written everything
     offset = 0;
@@ -148,6 +154,12 @@ int create_server(int port) {
     return -4;
   }
 
+  int yes = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,  &yes, sizeof(yes)) != 0) {
+    printf("error set SO_REUSEADDR\n");
+    return -5;
+  }
+
   struct sockaddr_in s_addr;
   bzero((char *)&s_addr, sizeof(s_addr));
   s_addr.sin_family = AF_INET;
@@ -156,7 +168,7 @@ int create_server(int port) {
 
   if (bind(fd, (struct sockaddr*)&s_addr, sizeof(s_addr)) < 0) {
     perror("binding\n");
-    return -5;
+    return -6;
   }
 
   listen(fd, 2);

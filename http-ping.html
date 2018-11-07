@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN" xml:lang="zh-CN">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>Network status</title>
+	</head>
+	<body>
+		<p id="body_title"></p>
+		<div id="msg"></div>
+<script>
+var msg = document.getElementById("msg");
+//setTimeIndicator();
+var startTime;
+function getCode() {
+    startTime = new Date().getTime();
+    fetch("/ping", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "region=" + "1" + "&phone=" + "5804005678" + "&mod=code&act=getCode",
+    })
+    .then(res => res.json())
+    .then(data => {
+		setTimeIndicator(startTime);
+    }).catch(function(error) {
+	    msg.innerHTML = 'error: ' + error.message;
+    });
+}
+
+function setTimeIndicator(start) {
+    let now = new Date();
+	document.getElementById('body_title').innerHTML = now.toString() + "！"
+	msg.innerHTML = 'round trip time: ' + (now.getTime() - start).toString() + 'ms';
+}
+
+</script>
+	</body>
+</html>
+
