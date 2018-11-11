@@ -259,16 +259,14 @@ int main(int argc, char *argv[]) {
 						perror("epoll_ctl");
 						close(cd);
 					}
-				}
-				else {
+				} else {
 					if (errno == EINTR) {
 						continue;
 					}
 					perror("accept");
 					break;
 				}
-			}
-			else {
+			} else {
 				//struct timespec req, rem;
 				//req.tv_sec = 2;
 				//req.tv_nsec = 100000000;

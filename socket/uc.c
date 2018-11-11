@@ -91,8 +91,7 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < 8; ++i) {
-		//char buf[1<<11];
-		char buf[1024];
+		char buf[1<<14];
 		struct timespec ts[2];
 		clock_gettime(CLOCK_MONOTONIC, &ts[0]);
 		sprintf(buf, "packet %d ...", i);
