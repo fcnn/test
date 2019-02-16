@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <time.h>
 
-#define SERVICE_NAME "5099"
+#define SERVICE_NAME "9177"
 #define HOST_NAME "localhost"
 
 int connect_server(int argc, char *argv[])
@@ -62,9 +62,7 @@ int connect_server(int argc, char *argv[])
 			continue;
 		}
 
-		getnameinfo(addr_i->ai_addr, addr_i->ai_addrlen,
-			name, sizeof(name), serv_name, sizeof(serv_name),
-			NI_NUMERICHOST | NI_NUMERICSERV);
+		getnameinfo(addr_i->ai_addr, addr_i->ai_addrlen, name, sizeof(name), serv_name, sizeof(serv_name), NI_NUMERICHOST | NI_NUMERICSERV);
 		printf("connecting to %s/%s ... ", name, serv_name);
 		fflush(stdout);
 
@@ -85,16 +83,17 @@ int main(int argc, char *argv[])
 {
 	int i;
 	int len;
-	char buf[1024];
 	int sd = connect_server(argc, argv);
 	if (sd == -1) {
 		exit(1);
 	}
 
-	for (i = 0; i < 2; ++i) {
+	for (i = 0; i < 8; ++i) {
+		char buf[1<<14];
 		struct timespec ts[2];
 		clock_gettime(CLOCK_MONOTONIC, &ts[0]);
-		len = send(sd, buf, 256, 0);
+		sprintf(buf, "packet %d ...", i);
+		len = send(sd, buf, sizeof buf, 0);
 		if (len == -1) {
 			perror("send");
 			break;
@@ -105,8 +104,8 @@ int main(int argc, char *argv[])
 			break;
 		}
 		clock_gettime(CLOCK_MONOTONIC, &ts[1]);
-		long nsec = ts[1].tv_nsec - ts[0].tv_nsec;
-		printf("time = %ld.%03ld, bytes recved = %ld\n", nsec / 1000, nsec % 1000, (long)len);
+		long nsec = (ts[1].tv_sec - ts[0].tv_sec)*1000000000 + ts[1].tv_nsec - ts[0].tv_nsec;
+		printf("time = %ld.%06ld, bytes recved = %ld\n", nsec / 1000000, nsec % 1000000, (long)len);
 	}
 
 	close(sd);

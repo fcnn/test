@@ -15,10 +15,9 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 
-#define SERVICE_NAME "5099"
+#define SERVICE_NAME "9177"
 
-static int
-init_server(int argc, char *argv[])
+static int init_server(int argc, char *argv[])
 {
 	int sd;
 	int res;
@@ -85,8 +84,7 @@ init_server(int argc, char *argv[])
 	return addr_i == 0 ? -1 : sd; 
 }
 
-static void
-sig_child(int signo, siginfo_t *siginfo, void *foo)
+static void sig_child(int signo, siginfo_t *siginfo, void *foo)
 {
 	int status;
 	struct rusage rusage;
@@ -94,8 +92,7 @@ sig_child(int signo, siginfo_t *siginfo, void *foo)
 	}
 }
 
-static int
-init_sig(int argc, char *argv[])
+static int init_sig(int argc, char *argv[])
 {
 	struct sigaction act, oact;
 
@@ -108,13 +105,11 @@ init_sig(int argc, char *argv[])
 	return 0;
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	int sd;
 	ssize_t len;
 	socklen_t slen;
-	char buf[1024];
 	struct sockaddr_in6 sa;
 
 	if (init_sig(argc, argv) != 0) {
@@ -129,16 +124,17 @@ main(int argc, char *argv[])
 	for ( ; ; ) {
 		//printf("-> ");
 		//fflush(stdout);
+		char buf[1<<13];
 		slen = sizeof (sa);
 		len = recvfrom(sd, buf, sizeof (buf), 0, (struct sockaddr *)&sa, &slen);
 		if (len != -1) {
-#if 0
+#if 1
 			char name[128];
 			char serv_name[64];
 			getnameinfo((struct sockaddr *)&sa, slen,
 				name, sizeof(name), serv_name, sizeof(serv_name),
 				NI_NUMERICHOST | NI_NUMERICSERV);
-			printf("recved %ld bytes from %s/%s.\n", (long)len, name, serv_name);
+			printf("recved %ld bytes from %s/%s. %s\n", (long)len, name, serv_name, buf);
 #endif //0
 			sendto(sd, buf, len, 0, (struct sockaddr *)&sa, slen);
 		}
