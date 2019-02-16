@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <time.h>
 
-#define SERVICE_NAME "5099"
+#define SERVICE_NAME "9177"
 #define HOST_NAME "localhost"
 
 int connect_server(int argc, char *argv[])
@@ -62,9 +62,7 @@ int connect_server(int argc, char *argv[])
 			continue;
 		}
 
-		getnameinfo(addr_i->ai_addr, addr_i->ai_addrlen,
-			name, sizeof(name), serv_name, sizeof(serv_name),
-			NI_NUMERICHOST | NI_NUMERICSERV);
+		getnameinfo(addr_i->ai_addr, addr_i->ai_addrlen, name, sizeof(name), serv_name, sizeof(serv_name), NI_NUMERICHOST | NI_NUMERICSERV);
 		printf("connecting to %s/%s ... ", name, serv_name);
 		fflush(stdout);
 

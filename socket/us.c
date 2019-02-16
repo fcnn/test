@@ -15,10 +15,9 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 
-#define SERVICE_NAME "5099"
+#define SERVICE_NAME "9177"
 
-static int
-init_server(int argc, char *argv[])
+static int init_server(int argc, char *argv[])
 {
 	int sd;
 	int res;
@@ -85,8 +84,7 @@ init_server(int argc, char *argv[])
 	return addr_i == 0 ? -1 : sd; 
 }
 
-static void
-sig_child(int signo, siginfo_t *siginfo, void *foo)
+static void sig_child(int signo, siginfo_t *siginfo, void *foo)
 {
 	int status;
 	struct rusage rusage;
@@ -94,8 +92,7 @@ sig_child(int signo, siginfo_t *siginfo, void *foo)
 	}
 }
 
-static int
-init_sig(int argc, char *argv[])
+static int init_sig(int argc, char *argv[])
 {
 	struct sigaction act, oact;
 
@@ -108,8 +105,7 @@ init_sig(int argc, char *argv[])
 	return 0;
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	int sd;
 	ssize_t len;
