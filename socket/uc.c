@@ -10,8 +10,8 @@
 #include <errno.h>
 #include <time.h>
 
-#define SERVICE_NAME "9177"
-#define HOST_NAME "localhost"
+#define SERVICE_NAME "1111"
+#define HOST_NAME "f2.yeejay.cc"
 
 int connect_server(int argc, char *argv[])
 {
@@ -39,7 +39,7 @@ int connect_server(int argc, char *argv[])
 		}
 	}
 
-	printf("resolving %s/%s ...", host, service);
+	printf("resolving %s:%s ...", host, service);
 	fflush(stdout);
 
 	res = getaddrinfo(host, service, &hints, &hostaddr);
@@ -63,7 +63,7 @@ int connect_server(int argc, char *argv[])
 		}
 
 		getnameinfo(addr_i->ai_addr, addr_i->ai_addrlen, name, sizeof(name), serv_name, sizeof(serv_name), NI_NUMERICHOST | NI_NUMERICSERV);
-		printf("connecting to %s/%s ... ", name, serv_name);
+		printf("connecting to %s:%s ... ", name, serv_name);
 		fflush(stdout);
 
 		if (connect(sd, addr_i->ai_addr, addr_i->ai_addrlen) == 0) {
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < 8; ++i) {
-		char buf[1<<14];
+		char buf[1<<10];
 		struct timespec ts[2];
 		clock_gettime(CLOCK_MONOTONIC, &ts[0]);
 		sprintf(buf, "packet %d ...", i);
@@ -98,6 +98,8 @@ int main(int argc, char *argv[])
 			perror("send");
 			break;
 		}
+		printf("%d. sent %d ... ", i, len); 
+		fflush(stdout);
 		len = recv(sd, buf, sizeof (buf), 0);
 		if (len == -1) {
 			perror("recv");
