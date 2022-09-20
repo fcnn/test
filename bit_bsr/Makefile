@@ -14,11 +14,11 @@ asm: bb.c
 lg2: bb.c
 	$(CC) $(CFLAGS) -D__LG2 -o $@ $< -lrt -lm
 
-run: bbo sbo
-	echo bb=`./bbo` &
-	echo sb=`./sbo` &
-	echo as=`./asm` &
-	echo sf=`./bsf` &
-	echo lg=`./lg2` &
+run:
+	@echo bb:: `./bbo`
+	@echo sb:: `./sbo`
+	@echo as:: `./asm`
+	@echo sf:: `./bsf`
+	@echo lg:: `./lg2`
 clean:
 	rm -f bbo sbo bsf asm lg2

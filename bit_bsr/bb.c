@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <math.h>
 
@@ -23,7 +24,7 @@
 #define BIT_1_POS(__value, __ret) { \
   int __i = 0; \
   for (unsigned long __n = __value; __n != 0; ++__i) __n >>= 1; \
-  __ret = __i; \
+	__ret = __i; \
 } 
 
 #elif defined(__BSF)
@@ -31,7 +32,7 @@
 // bit scan forward for 64 bit integral number
 /* ============================================ */
 static inline int __bsf_folded (unsigned long bb) {
-   static const int lsb_64_table[64] = {
+   static const int lsb_64_table[] = {
       63, 30,  3, 32, 59, 14, 11, 33,
       60, 24, 50,  9, 55, 19, 21, 34,
       61, 29,  2, 53, 51, 23, 41, 18,
@@ -63,7 +64,43 @@ static inline int __bsf_folded (unsigned long bb) {
 
 #endif 
 
-int main() {
+unsigned int _bit_scan_reverse(unsigned long n) {
+	unsigned int pos=0;
+	BIT_1_POS(n,pos);
+	return pos;
+}
+
+unsigned int __div(unsigned int number, unsigned int denom) {
+    if(1 == denom) {
+        return number;
+    }
+
+    if(0 == denom) {
+	    abort();
+	    return 0;
+    }
+
+    const int shift_count = _bit_scan_reverse(number) - _bit_scan_reverse(denom);
+    if(shift_count <= 0) {
+    	return number >= denom?1:0;
+    }
+
+    unsigned int bits = 1 << shift_count;
+    unsigned int result = 0;
+    denom <<= shift_count;
+    while(bits > 0) {
+	    if(number >= denom) {
+		    result += bits;
+		    number -= denom;
+	    }
+	    bits >>= 1;
+	    denom >>= 1;
+    }
+
+    return result;
+}
+
+int bench_mark() {
   int pos;
   struct timespec tp0, tp1;
   clock_gettime(CLOCK_REALTIME, &tp0);
@@ -75,7 +112,8 @@ int main() {
       printf("%i\n", pos);
       n >>= 1;
     }
-    pos = 123456;
+    pos = 0;
+    n = 0;
     BIT_1_POS(n, pos);
     printf("%i\n", pos);
   }
@@ -89,4 +127,12 @@ int main() {
     tp1.tv_nsec += 1000000000 - tp0.tv_nsec;
   }
   printf("elsp. time: %li.%09li\n", (long)tp1.tv_sec, (long)tp1.tv_nsec);
+  return 0;
+}
+
+int main(int argc, char *argv[]) {
+	unsigned u1=26;
+	unsigned u2=5;
+	printf("\t\t%u/%u=%u [%u]\n",u1,u2,__div(u1,u2),u1/u2);
+	bench_mark();
 }
