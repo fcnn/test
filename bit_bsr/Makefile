@@ -15,10 +15,10 @@ lg2: bb.c
 	$(CC) $(CFLAGS) -D__LG2 -o $@ $< -lrt -lm
 
 run:
-	@echo bb:: `./bbo`
-	@echo sb:: `./sbo`
-	@echo as:: `./asm`
-	@echo sf:: `./bsf`
-	@echo lg:: `./lg2`
+	@echo bbo:: `./bbo`
+	@echo sbo:: `./sbo`
+	@echo bsr:: `./asm`
+	@echo bsf:: `./bsf`
+	@echo lg2:: `./lg2`
 clean:
 	rm -f bbo sbo bsf asm lg2

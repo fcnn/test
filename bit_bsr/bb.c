@@ -80,7 +80,6 @@ unsigned long udiv(unsigned long numer, unsigned long denom,unsigned long *remai
     	return numer < denom?0:1;
     }
 
-    printf(" <<%d-%d=%d>> ",_bit_1_pos(numer), _bit_1_pos(denom),shift_count);
     unsigned long bits = 1 << shift_count;
     unsigned long quotient = 0;
     denom <<= shift_count;
@@ -131,7 +130,7 @@ int bench_mark() {
 }
 
 int main(int argc, char *argv[]) {
-	unsigned long u1=36;
+	unsigned long u1=37;
 	unsigned long u2=8;
 	unsigned long remainder=0;
 	printf("\t\t%lu/%lu=%lu@%lu [%lu]\n",u1,u2,udiv(u1,u2,&remainder),remainder,u1/u2);
