@@ -64,75 +64,76 @@ static inline int __bsf_folded (unsigned long bb) {
 
 #endif 
 
-unsigned int _bit_scan_reverse(unsigned long n) {
+unsigned int _bit_1_pos(unsigned long n) {
 	unsigned int pos=0;
 	BIT_1_POS(n,pos);
 	return pos;
 }
 
-unsigned int __div(unsigned int number, unsigned int denom) {
-    if(1 == denom) {
-        return number;
+unsigned long udiv(unsigned long numer, unsigned long denom,unsigned long *remainder) {
+    if(denom<=1) {
+        return denom==1?numer:0;
     }
 
-    if(0 == denom) {
-	    abort();
-	    return 0;
-    }
-
-    const int shift_count = _bit_scan_reverse(number) - _bit_scan_reverse(denom);
+    int shift_count = _bit_1_pos(numer) - _bit_1_pos(denom);
     if(shift_count <= 0) {
-    	return number >= denom?1:0;
+    	return numer < denom?0:1;
     }
 
-    unsigned int bits = 1 << shift_count;
-    unsigned int result = 0;
+    printf(" <<%d-%d=%d>> ",_bit_1_pos(numer), _bit_1_pos(denom),shift_count);
+    unsigned long bits = 1 << shift_count;
+    unsigned long quotient = 0;
     denom <<= shift_count;
     while(bits > 0) {
-	    if(number >= denom) {
-		    result += bits;
-		    number -= denom;
+	    if(numer >= denom) {
+		    quotient += bits;
+		    numer -= denom;
 	    }
 	    bits >>= 1;
 	    denom >>= 1;
     }
 
-    return result;
+    if (remainder != 0) {
+	    *remainder = numer;
+    }
+
+    return quotient;
 }
 
 int bench_mark() {
-  int pos;
-  struct timespec tp0, tp1;
-  clock_gettime(CLOCK_REALTIME, &tp0);
-  for (int i = 0; i < 1; ++i) {
-  //for (int i = 0; i < 1000000; ++i) {
-    unsigned long n = (1L<<63);
-    while (n) {
-      BIT_1_POS(n, pos);
-      printf("%i\n", pos);
-      n >>= 1;
-    }
-    pos = 0;
-    n = 0;
-    BIT_1_POS(n, pos);
-    printf("%i\n", pos);
-  }
-  clock_gettime(CLOCK_REALTIME, &tp1);
+	int pos;
+	struct timespec tp0, tp1;
+	clock_gettime(CLOCK_REALTIME, &tp0);
+	for (int i = 0; i < 1; ++i) {
+		//for (int i = 0; i < 1000000; ++i) {
+		unsigned long n = (1L<<63);
+		while (n) {
+			BIT_1_POS(n, pos);
+			printf("%i\n", pos);
+			n >>= 1;
+		}
+		pos = 0;
+		n = 0;
+		BIT_1_POS(n, pos);
+		printf("%i\n", pos);
+	}
+	clock_gettime(CLOCK_REALTIME, &tp1);
 
-  tp1.tv_sec -= tp0.tv_sec;
-  if (tp1.tv_nsec >= tp0.tv_nsec) {
-    tp1.tv_nsec -= tp0.tv_nsec;
-  } else {
-    tp1.tv_sec--;
-    tp1.tv_nsec += 1000000000 - tp0.tv_nsec;
-  }
-  printf("elsp. time: %li.%09li\n", (long)tp1.tv_sec, (long)tp1.tv_nsec);
-  return 0;
+	tp1.tv_sec -= tp0.tv_sec;
+	if (tp1.tv_nsec >= tp0.tv_nsec) {
+		tp1.tv_nsec -= tp0.tv_nsec;
+	} else {
+		tp1.tv_sec--;
+		tp1.tv_nsec += 1000000000 - tp0.tv_nsec;
+	}
+	printf("elsp. time: %li.%09li\n", (long)tp1.tv_sec, (long)tp1.tv_nsec);
+	return 0;
 }
 
 int main(int argc, char *argv[]) {
-	unsigned u1=26;
-	unsigned u2=5;
-	printf("\t\t%u/%u=%u [%u]\n",u1,u2,__div(u1,u2),u1/u2);
-	bench_mark();
+	unsigned long u1=36;
+	unsigned long u2=8;
+	unsigned long remainder=0;
+	printf("\t\t%lu/%lu=%lu@%lu [%lu]\n",u1,u2,udiv(u1,u2,&remainder),remainder,u1/u2);
+	//bench_mark();
 }
